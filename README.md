@@ -105,7 +105,7 @@ include ':react-native-paypal'
 project(':react-native-paypal').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-paypal/android')
 ```
 
-4. Edit android/src/.../MainActivity.java
+4. If using RN < 0.29, edit android/src/.../MainActivity.java
 
 ``` java
 // ...
@@ -122,7 +122,7 @@ public class MainActivity extends Activity implements DefaultHardwareBackBtnHand
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         // ...
-        payPalPackage = new PayPalPackage(this, PAY_PAL_REQUEST_ID); // <--
+        payPalPackage = new PayPalPackage(PAY_PAL_REQUEST_ID); // <--
 
         mReactInstanceManager = ReactInstanceManager.builder()
                 .setApplication(getApplication())
@@ -151,10 +151,74 @@ public class MainActivity extends Activity implements DefaultHardwareBackBtnHand
 }
 ```
 
-iOS
----
+If using RN 0.29+, edit android/src/.../MainApplication.java
 
-### Sample App
+``` java
+// ...
+import br.com.vizir.rn.paypal.PayPalPackage; // <--
+
+public class MainApplication extends Application implements ReactApplication {
+    // ...
+    private static final int PAY_PAL_REQUEST_ID = 9; // <-- Can be any unique number
+    private PayPalPackage payPalPackage; // <--
+
+    private final ReactNativeHost reactNativeHost = new ReactNativeHost(this) {
+
+            // ...
+
+            @Override
+            protected List<ReactPackage> getPackages() {
+                payPalPackage = new PayPalPackage(PAY_PAL_REQUEST_ID);  // <--
+
+                return Arrays.<ReactPackage>asList(
+                    payPalPackage,  // <--
+                    // ...
+                );
+            }
+        };
+    }
+
+    // ...
+}
+```
+
+Then edit android/src/.../MainActivity.java
+
+``` java
+// ...
+import android.content.Intent; // <--
+
+public class MainActivity extends ReactActivity {
+
+    // ...
+
+    @Override
+    public void onActivityResult(final int requestCode, final int resultCode, final Intent data) {
+       super.onActivityResult(requestCode, resultCode, data);
+
+       if (requestCode == MainApplication.PAY_PAL_REQUEST_ID) { // <--
+           ((MainApplication) getApplication()).payPalPackage.handleActivityResult(requestCode, resultCode, data); // <--
+       } else {
+           otherModulesHandlers(requestCode, resultCode, data);
+       }
+    }
+}
+```
+
+
+5. Usage example:
+
+```javascript
+var PayPal = require('react-native-paypal');
+PayPal.paymentRequest({
+  clientId: 'AbyfNDFV53djg6w4yYgiug_JaDfBSUiYI7o6NM9HE1CQ_qk9XxbUX0nwcPXXQHaNAWYtDfphQtWB3q4R',
+  environment: PayPal.SANDBOX,
+  price: '42.00',
+  currency: 'USD',
+  description: 'PayPal Test'
+}).then((confirm, payment) => console.log('Paid'); /* MUST verify payment in server*/)
+.catch((error_code) => console.error('Failed to pay through PayPal'));
+```
 
 You'll find an iOS example in `<root>/ios/Example/`. You will need to run npm install in that directory in order to download the dependencies required by the sample application. Note this sample still uses manual NativeModule usage, and you'll likely find the above Javascript simpler than the JS used in this sample.
 
